@@ -3,8 +3,10 @@ from matplotlib.patches import Polygon
 from shapely.geometry import LineString, Point
 from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.geometry import MultiPolygon
+from shapely import distance as getDistance
 from shapely.ops import unary_union
-import networkx as nx
+
+from tack import Tack
 
 
 
@@ -98,7 +100,7 @@ def plot_paths(paths,plt,ax):
     # Проходим по каждому LineString в массиве paths
     for path in paths:
         x, y = path.xy  # Извлекаем координаты x и y
-        ax.plot(x, y,'k')  # Рисуем линии на графике
+        ax.plot(x, y,'r')  # Рисуем линии на графике
 
     # Устанавливаем метки для осей
     # ax.set_xlabel('X')
@@ -106,7 +108,7 @@ def plot_paths(paths,plt,ax):
     # ax.set_title('Paths')
 
     # Показываем график
-    # plt.show()
+    plt.show()
 
 def nearest_end_point(point_coords, linestring):
     """
@@ -166,27 +168,102 @@ def low_vertex(line):
         return start_point
     else:
         return end_point
+    
+def get_nearest_point(point, linestrings):
+    """
+    Найти ближайшую точку на любом linestring к заданной точке.
 
-def link_tacks_sequentially(tacks):
+    :param point: исходная точка (shapely.geometry.Point)
+    :param linestrings: список линий (список shapely.geometry.LineString)
+    :return: ближайшая точка (shapely.geometry.Point) и расстояние до неё
+    """
+    min_distance = float('inf')
+    nearest_point = None
+
+    for linestring in linestrings:
+        # Найти ближайшую точку на текущем linestring
+        # current_nearest_point = linestring.interpolate(linestring.project(point))
+        # current_distance = point.distance(current_nearest_point)
+
+        distance1 = getDistance(point, Point(linestring.coords[0]))
+        distance2 = getDistance(point, Point(linestring.coords[-1]))
+        if distance1 > distance2:
+            current_distance = distance1
+            current_nearest_point = linestring.coords[0]
+        else:
+            current_distance = distance2
+            current_nearest_point = linestring.coords[-1]
+
+
+        if current_distance < min_distance:
+            min_distance = current_distance
+            nearest_point = current_nearest_point
+
+    return nearest_point, min_distance
+
+def link_tacks_sequentially(tacks,TackList, plt,ax):
     """Связать галсы для формирования последовательного пути."""
     path = []
-    prevTack = 0
-    counter = 2
-    for tack in tacks:
-        if prevTack == 0:
-            prevTack = tack
-            path.append(tack)
-        else:
-            path.append(tack)
-            if counter % 2 == 0:
-                connectTack = LineString([ highest_vertex(prevTack),nearest_end_point(highest_vertex(prevTack),tack)])
-                path.append(connectTack)
-            else:
-                connectTack = LineString([low_vertex(prevTack),nearest_end_point(low_vertex(prevTack),tack)])
-                path.append(connectTack)
-            counter += 1
-            prevTack = tack
-        # plot_paths(path)
+
+    countTack = TackList.get_lastTack().id + 1
+    # countTack = countTack +1
+
+    for i in range(countTack, 0, -1):
+        if countTack == i:
+            currentTack = TackList.get_tackId(0)
+            path.append(currentTack.line)
+
+
+        if currentTack.connectFlag == 0:
+            currentPoint = Point(currentTack.line.coords[-1])
+        elif currentTack.connectFlag == 1:
+            currentPoint = Point(currentTack.line.coords[0])
+        elif currentTack.connectFlag == -1:
+            currentPoint = Point(currentTack.line.coords[-1])
+            currentTack.connectFlag = 0
+
+
+        min_id, min_distance, nearest_point = currentTack.get_id_mostNear(currentPoint)
+
+        if min_id == -1: continue
+        
+        mostNearTack = currentTack.get_tackId(min_id)
+        mostNearTack.connectFlag = nearest_point
+
+        if nearest_point: nextPoint = Point(mostNearTack.line.coords[-1])
+        else: nextPoint = Point(mostNearTack.line.coords[0])
+        connectLine = LineString([currentPoint, nextPoint])
+
+        path.append(connectLine)
+        path.append(currentTack.line)
+
+        currentTack = mostNearTack
+
+
+
+
+    # prevTack = 0
+    # prevPoint = 0
+    # for i, tack in enumerate(tacks):
+    #     if prevTack == 0:
+    #         prevTack = tack
+    #         path.append(tack)
+    #     else:
+    #         path.append(tack)
+
+    #         # Получаем оставшиеся галсы, начиная с текущего
+    #         remaining_tacks = tacks[i+1:]
+    #         if remaining_tacks:
+    #             nearest_point, min_distance = get_nearest_point(Point(prevTack.coords[0]), remaining_tacks)
+    #             if prevPoint == 0: prevPoint = prevTack.coords[0]
+    #             connectTack = LineString([prevPoint, nearest_point])
+
+    #             prevPoint = nearest_point
+    #             path.append(connectTack)
+    #         prevTack = tack
+
+        # plot_paths(path,plt,ax)
+    path.append(currentTack.line)
     return path
 
 
@@ -270,13 +347,16 @@ def coverage_path_planning_algorithm(zona_research, distance):
             zona_research_polygon = remove_micro_polygons(zona_research_polygon)
             # plot_polygon(zona_research_polygon,'green')
 
+            if optimal_tack_set == []: TackList = Tack(optimal_tack)
+            else: TackList.append(optimal_tack)
+        
             optimal_tack_set.append(optimal_tack)
         else:
             zona_research_polygon = ShapelyPolygon()
     
     # plt.show()
-    path = link_tacks_sequentially(optimal_tack_set)
-    # plot_paths(path,plt,ax)
+    path = link_tacks_sequentially(optimal_tack_set, TackList, plt, ax)
+    plot_paths(path,plt,ax)
 
     # plot_path(path, zona_research_polygon, plt, ax)
     # return path
@@ -297,19 +377,19 @@ def coverage_path_planning_algorithm(zona_research, distance):
     plt.savefig(file_path)
 
     # Показываем график
-    plt.show()
+    # plt.show()
 
 
 # vertices1 = [(5, 10), (10, 15), (20,  20), (15, 5), (1, 1)]
-# vertices2 = [(2, 18), (8, 19), (14, 15), (17, 8), (5, 3)]
+vertices2 = [(2, 18), (8, 19), (14, 15), (17, 8), (5, 3)]
 # vertices3 = [(1, 6), (4, 18), (10, 20), (16, 15), (18, 7)]
 # vertices4 = [(3, 12), (7, 18), (14, 19), (18, 11), (12, 6)]
-vertices5 = [(2, 8), (8, 18), (12, 20), (16, 12), (6, 5)]
+# vertices5 = [(2, 8), (8, 18), (12, 20), (16, 12), (6, 5)]
 
 gs = 1
 
 # path = coverage_path_planning_algorithm(vertices1, gs)
-# path = coverage_path_planning_algorithm(vertices2, gs)
+path = coverage_path_planning_algorithm(vertices2, gs)
 # path = coverage_path_planning_algorithm(vertices3, gs)
 # path = coverage_path_planning_algorithm(vertices4, gs)
-path = coverage_path_planning_algorithm(vertices5, gs)
+# path = coverage_path_planning_algorithm(vertices5, gs)
