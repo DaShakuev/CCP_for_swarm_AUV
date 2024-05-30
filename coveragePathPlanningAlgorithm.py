@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from shapely.geometry import LineString, Point
@@ -5,14 +6,7 @@ from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.geometry import MultiPolygon
 from shapely import distance as getDistance
 from shapely.ops import unary_union
-
 from tack import Tack
-
-
-
-
-
-import numpy as np
 
 def get_angle(edge):
     """Вычислить угол наклона ребра в радианах."""
@@ -78,8 +72,8 @@ def remove_micro_polygons(region):
                 large_polygons.append(p)
         return unary_union(large_polygons)
     
-# Функция для рисования многоугольника или мультиполигона
 def plot_polygon(polygon):
+    """Функция для рисования многоугольника или мультиполигона."""
     if isinstance(polygon, ShapelyPolygon):
         x, y = polygon.exterior.xy
         plt.plot(x, y)
@@ -95,19 +89,10 @@ def plot_paths(paths,plt,ax):
 
     :param paths: Список объектов LineString.
     """
-    # fig, ax = plt.subplots()
-    
     # Проходим по каждому LineString в массиве paths
     for path in paths:
         x, y = path.xy  # Извлекаем координаты x и y
         ax.plot(x, y,'r')  # Рисуем линии на графике
-
-    # Устанавливаем метки для осей
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_title('Paths')
-
-    # Показываем график
     plt.show()
 
 def nearest_end_point(point_coords, linestring):
@@ -181,10 +166,6 @@ def get_nearest_point(point, linestrings):
     nearest_point = None
 
     for linestring in linestrings:
-        # Найти ближайшую точку на текущем linestring
-        # current_nearest_point = linestring.interpolate(linestring.project(point))
-        # current_distance = point.distance(current_nearest_point)
-
         distance1 = getDistance(point, Point(linestring.coords[0]))
         distance2 = getDistance(point, Point(linestring.coords[-1]))
         if distance1 > distance2:
@@ -193,27 +174,22 @@ def get_nearest_point(point, linestrings):
         else:
             current_distance = distance2
             current_nearest_point = linestring.coords[-1]
-
-
         if current_distance < min_distance:
             min_distance = current_distance
             nearest_point = current_nearest_point
 
     return nearest_point, min_distance
 
-def link_tacks_sequentially(tacks,TackList, plt,ax):
+def link_tacks_sequentially(TackList):
     """Связать галсы для формирования последовательного пути."""
     path = []
 
     countTack = TackList.get_lastTack().id + 1
-    # countTack = countTack +1
 
     for i in range(countTack, 0, -1):
         if countTack == i:
             currentTack = TackList.get_tackId(0)
             path.append(currentTack.line)
-
-
         if currentTack.connectFlag == 0:
             currentPoint = Point(currentTack.line.coords[-1])
         elif currentTack.connectFlag == 1:
@@ -221,7 +197,6 @@ def link_tacks_sequentially(tacks,TackList, plt,ax):
         elif currentTack.connectFlag == -1:
             currentPoint = Point(currentTack.line.coords[-1])
             currentTack.connectFlag = 0
-
 
         min_id, min_distance, nearest_point = currentTack.get_id_mostNear(currentPoint)
 
@@ -238,37 +213,8 @@ def link_tacks_sequentially(tacks,TackList, plt,ax):
         path.append(currentTack.line)
 
         currentTack = mostNearTack
-
-
-
-
-    # prevTack = 0
-    # prevPoint = 0
-    # for i, tack in enumerate(tacks):
-    #     if prevTack == 0:
-    #         prevTack = tack
-    #         path.append(tack)
-    #     else:
-    #         path.append(tack)
-
-    #         # Получаем оставшиеся галсы, начиная с текущего
-    #         remaining_tacks = tacks[i+1:]
-    #         if remaining_tacks:
-    #             nearest_point, min_distance = get_nearest_point(Point(prevTack.coords[0]), remaining_tacks)
-    #             if prevPoint == 0: prevPoint = prevTack.coords[0]
-    #             connectTack = LineString([prevPoint, nearest_point])
-
-    #             prevPoint = nearest_point
-    #             path.append(connectTack)
-    #         prevTack = tack
-
-        # plot_paths(path,plt,ax)
     path.append(currentTack.line)
     return path
-
-
-
-
 
 
 def coverage_path_planning_algorithm(zona_research, distance):
@@ -278,12 +224,10 @@ def coverage_path_planning_algorithm(zona_research, distance):
     # Настройка пределов осей
     ax.set_xlim(min(x for x, y in zona_research) - 1, max(x for x, y in zona_research) + 1)
     ax.set_ylim(min(y for x, y in zona_research) - 1, max(y for x, y in zona_research) + 1)
-
     ax.grid(True)
 
     # Создаем многоугольник с помощью массива вершин
     polygon = Polygon(zona_research, closed=True, fill=None, edgecolor='b')
-
 
     # Добавляем многоугольник на оси
     ax.add_patch(polygon)
@@ -293,17 +237,6 @@ def coverage_path_planning_algorithm(zona_research, distance):
 
     while zona_research_polygon.area > 0:
         tack_set = []
-
-
-        # # Проверяем тип объекта
-        # if isinstance(zona_research_polygon, MultiPolygon):
-        #     polygons = zona_research_polygon
-        # elif isinstance(zona_research_polygon, ShapelyPolygon):
-        #     polygons = [zona_research_polygon]
-        # else:
-        #     polygons = []
-
-        # plot_polygon(zona_research_polygon)
         coords = list(zona_research_polygon.exterior.coords)
         for edge in zip(coords, coords[1:]):
             line_segment = LineString(edge)
@@ -325,12 +258,11 @@ def coverage_path_planning_algorithm(zona_research, distance):
             segments = get_segments_inside_region(cross_point_set, zona_research_polygon)
             tack_set.extend(segments)
 
-        # zona_research_polygon = ShapelyPolygon(zona_research)
         vector_criterion = {}
         for tack in tack_set:
             remain_region = get_subtraction(zona_research_polygon, get_cover_rectangle(tack))
             greed_criterion = zona_research_polygon.area - remain_region.area
-            # remain_region = remove_micro_polygons(remain_region)
+            remain_region = remove_micro_polygons(remain_region)
             econom_criterion = zona_research_polygon.length / remain_region.length if remain_region.length != 0 else 1
             vector_criterion[tack] = greed_criterion * econom_criterion
 
@@ -338,14 +270,8 @@ def coverage_path_planning_algorithm(zona_research, distance):
             optimal_tack = find_maximum(vector_criterion)
             x, y = optimal_tack.xy
             ax.plot(x, y, 'k')
-            # plt.show()
-
-            print("optimal_tack = ",optimal_tack)
             zona_research_polygon = get_subtraction(zona_research_polygon, get_cover_rectangle(optimal_tack))
-
-            # plot_polygon(zona_research_polygon,'red')
             zona_research_polygon = remove_micro_polygons(zona_research_polygon)
-            # plot_polygon(zona_research_polygon,'green')
 
             if optimal_tack_set == []: TackList = Tack(optimal_tack)
             else: TackList.append(optimal_tack)
@@ -354,30 +280,9 @@ def coverage_path_planning_algorithm(zona_research, distance):
         else:
             zona_research_polygon = ShapelyPolygon()
     
-    # plt.show()
-    path = link_tacks_sequentially(optimal_tack_set, TackList, plt, ax)
+    path = link_tacks_sequentially(TackList)
     plot_paths(path,plt,ax)
-
-    # plot_path(path, zona_research_polygon, plt, ax)
-    # return path
-
-
-
-    # for optimal_tack in optimal_tack_set:
-        # x, y = optimal_tack.xy
-        # ax.plot(x, y, 'k')
-
-    from datetime import datetime
-    import os
-    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    file_name = f"my_plot_{current_time}.png"
-    file_path = os.path.join(".", file_name)  # Замените "путь_к_папке_с_файлами" на путь к вашей папке
-
-    # Сохранение графика в файл
-    plt.savefig(file_path)
-
-    # Показываем график
-    # plt.show()
+    return path
 
 
 # vertices1 = [(5, 10), (10, 15), (20,  20), (15, 5), (1, 1)]
