@@ -48,9 +48,9 @@ def get_subtraction(region, cover_rect):
     """Вычесть покрывающий прямоугольник из региона."""
     return region.difference(cover_rect)
 
-def get_cover_rectangle(tack):
+def get_cover_rectangle(tack, gs):
     """Создать покрывающий прямоугольник вокруг такта (заглушка реализации)."""
-    return tack.buffer(0.5)
+    return tack.buffer(gs/2)
 
 def find_maximum(vector_criterion):
     """Найти такт с максимальным значением критерия."""
@@ -227,7 +227,7 @@ def coverage_path_planning_algorithm(zona_research, distance):
     ax.grid(True)
 
     # Создаем многоугольник с помощью массива вершин
-    polygon = Polygon(zona_research, closed=True, fill=None, edgecolor='b')
+    polygon = Polygon(zona_research, closed=True, fill=None, edgecolor='black', linestyle='--')
 
     # Добавляем многоугольник на оси
     ax.add_patch(polygon)
@@ -236,11 +236,12 @@ def coverage_path_planning_algorithm(zona_research, distance):
     zona_research_polygon = ShapelyPolygon(zona_research)
 
     while zona_research_polygon.area > 0:
+        # plot_polygon(zona_research_polygon)
         tack_set = []
         coords = list(zona_research_polygon.exterior.coords)
         for edge in zip(coords, coords[1:]):
             line_segment = LineString(edge)
-            if line_segment.length < 1:
+            if line_segment.length < 0.1:
                 continue  # Пропускаем короткие edge
 
             angle = get_angle(edge) - np.pi / 2
@@ -250,7 +251,7 @@ def coverage_path_planning_algorithm(zona_research, distance):
 
             for otherEdge in zip(coords, coords[1:]):
                 otherEdge_segment = LineString(otherEdge)
-                if otherEdge_segment.length < 1:
+                if otherEdge_segment.length < 0.1:
                     continue  # Пропускаем короткие edge
                 cross_points = get_cross_points(line, LineString(otherEdge))
                 cross_point_set.extend(cross_points)
@@ -260,7 +261,7 @@ def coverage_path_planning_algorithm(zona_research, distance):
 
         vector_criterion = {}
         for tack in tack_set:
-            remain_region = get_subtraction(zona_research_polygon, get_cover_rectangle(tack))
+            remain_region = get_subtraction(zona_research_polygon, get_cover_rectangle(tack, distance))
             greed_criterion = zona_research_polygon.area - remain_region.area
             remain_region = remove_micro_polygons(remain_region)
             econom_criterion = zona_research_polygon.length / remain_region.length if remain_region.length != 0 else 1
@@ -270,7 +271,9 @@ def coverage_path_planning_algorithm(zona_research, distance):
             optimal_tack = find_maximum(vector_criterion)
             x, y = optimal_tack.xy
             ax.plot(x, y, 'k')
-            zona_research_polygon = get_subtraction(zona_research_polygon, get_cover_rectangle(optimal_tack))
+            # plt.show()
+
+            zona_research_polygon = get_subtraction(zona_research_polygon, get_cover_rectangle(optimal_tack, distance))
             zona_research_polygon = remove_micro_polygons(zona_research_polygon)
 
             if optimal_tack_set == []: TackList = Tack(optimal_tack)
@@ -286,15 +289,18 @@ def coverage_path_planning_algorithm(zona_research, distance):
 
 
 # vertices1 = [(5, 10), (10, 15), (20,  20), (15, 5), (1, 1)]
-vertices2 = [(2, 18), (8, 19), (14, 15), (17, 8), (5, 3)]
+# vertices2 = [(2, 18), (8, 19), (14, 15), (17, 8), (5, 3)]
 # vertices3 = [(1, 6), (4, 18), (10, 20), (16, 15), (18, 7)]
 # vertices4 = [(3, 12), (7, 18), (14, 19), (18, 11), (12, 6)]
 # vertices5 = [(2, 8), (8, 18), (12, 20), (16, 12), (6, 5)]
+# vertices2 = [(2*2, 18*2), (5*2, 19*2), (8*2, 17*2), (12, 16), (14, 13*2), (17*2, 11*2), (19, 8), (16*2, 5*2), (13*2, 3*2), (10*2, 2*2), (6*2, 4*2), (3*2, 6*2)]
+# vertices2 = [(3, 15), (7, 18), (8, 12), (14, 13), (16, 14), (19, 12), (10, 4), (4,2)]
 
 gs = 1
 
 # path = coverage_path_planning_algorithm(vertices1, gs)
-path = coverage_path_planning_algorithm(vertices2, gs)
+# path = coverage_path_planning_algorithm(vertices2, gs)
 # path = coverage_path_planning_algorithm(vertices3, gs)
 # path = coverage_path_planning_algorithm(vertices4, gs)
 # path = coverage_path_planning_algorithm(vertices5, gs)
+
