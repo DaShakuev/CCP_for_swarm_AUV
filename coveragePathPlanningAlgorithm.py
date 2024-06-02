@@ -89,11 +89,13 @@ def plot_paths(paths,plt,ax):
 
     :param paths: Список объектов LineString.
     """
+    # plt.show()
+
     # Проходим по каждому LineString в массиве paths
     for path in paths:
         x, y = path.xy  # Извлекаем координаты x и y
-        ax.plot(x, y,'r')  # Рисуем линии на графике
-    plt.show()
+        ax.plot(x, y,'r', linewidth=0.5)  # Рисуем линии на графике
+    # plt.show()
 
 def nearest_end_point(point_coords, linestring):
     """
@@ -183,6 +185,7 @@ def get_nearest_point(point, linestrings):
 def link_tacks_sequentially(TackList):
     """Связать галсы для формирования последовательного пути."""
     path = []
+    points = []
 
     countTack = TackList.get_lastTack().id + 1
 
@@ -190,6 +193,8 @@ def link_tacks_sequentially(TackList):
         if countTack == i:
             currentTack = TackList.get_tackId(0)
             path.append(currentTack.line)
+            points.append(currentTack.line.coords[0])
+
         if currentTack.connectFlag == 0:
             currentPoint = Point(currentTack.line.coords[-1])
         elif currentTack.connectFlag == 1:
@@ -212,9 +217,22 @@ def link_tacks_sequentially(TackList):
         path.append(connectLine)
         path.append(currentTack.line)
 
+        points.append([currentPoint.x,currentPoint.y])
+        # if currentTack.connectFlag == 0:
+        #     points.append(currentTack.line.coords[0])
+        # elif currentTack.connectFlag == 1:
+        #     points.append(currentTack.line.coords[-1])
+        points.append([nextPoint.x,nextPoint.y])
+
+
+
         currentTack = mostNearTack
     path.append(currentTack.line)
-    return path
+    if currentTack.connectFlag == 0:
+        points.append(currentTack.line.coords[-1])
+    elif currentTack.connectFlag == 1:
+        points.append(currentTack.line.coords[0])
+    return path, points
 
 
 def coverage_path_planning_algorithm(zona_research, distance):
@@ -270,7 +288,7 @@ def coverage_path_planning_algorithm(zona_research, distance):
         if vector_criterion:
             optimal_tack = find_maximum(vector_criterion)
             x, y = optimal_tack.xy
-            ax.plot(x, y, 'k')
+            # ax.plot(x, y, 'k')
             # plt.show()
 
             zona_research_polygon = get_subtraction(zona_research_polygon, get_cover_rectangle(optimal_tack, distance))
@@ -283,9 +301,9 @@ def coverage_path_planning_algorithm(zona_research, distance):
         else:
             zona_research_polygon = ShapelyPolygon()
     
-    path = link_tacks_sequentially(TackList)
+    path, points = link_tacks_sequentially(TackList)
     plot_paths(path,plt,ax)
-    return path
+    return path, points, plt
 
 
 # vertices1 = [(5, 10), (10, 15), (20,  20), (15, 5), (1, 1)]
@@ -293,8 +311,7 @@ def coverage_path_planning_algorithm(zona_research, distance):
 # vertices3 = [(1, 6), (4, 18), (10, 20), (16, 15), (18, 7)]
 # vertices4 = [(3, 12), (7, 18), (14, 19), (18, 11), (12, 6)]
 # vertices5 = [(2, 8), (8, 18), (12, 20), (16, 12), (6, 5)]
-# vertices2 = [(2*2, 18*2), (5*2, 19*2), (8*2, 17*2), (12, 16), (14, 13*2), (17*2, 11*2), (19, 8), (16*2, 5*2), (13*2, 3*2), (10*2, 2*2), (6*2, 4*2), (3*2, 6*2)]
-# vertices2 = [(3, 15), (7, 18), (8, 12), (14, 13), (16, 14), (19, 12), (10, 4), (4,2)]
+# vertices6 = [(3, 15), (7, 18), (8, 12), (14, 13), (16, 14), (19, 12), (10, 4), (4,2)]
 
 gs = 1
 
