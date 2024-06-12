@@ -1,7 +1,7 @@
 import control as ctrl
 
 class YawControl:
-    def __init__(self, K1 = 0.08, K_omega = 0.5, Kc = 45, T = 0.15, xi = 0.707):
+    def __init__(self, K1 = 0.08, K_omega = 0.5, Kc = 1, T = 0.15, xi = 0.707):
         self.K_Omega = K1 * K_omega * Kc
         self.T = T
         self.xi = xi

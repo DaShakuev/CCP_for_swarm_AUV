@@ -83,7 +83,7 @@ def plot_polygon(polygon):
             plt.plot(x, y)
     plt.show()
 
-def plot_paths(paths,plt,ax):
+def plot_paths(paths,ax):
     """
     Функция для отображения массива объектов LineString.
 
@@ -94,8 +94,28 @@ def plot_paths(paths,plt,ax):
     # Проходим по каждому LineString в массиве paths
     for path in paths:
         x, y = path.xy  # Извлекаем координаты x и y
-        ax.plot(x, y,'r', linewidth=0.5)  # Рисуем линии на графике
+        ax.plot(x, y,'#3eb489', linewidth=1)  # Рисуем линии на графике
     # plt.show()
+
+def plot_path(path,plt,ax):
+    """
+    Функция для отображения массива объектов LineString.
+
+    :param paths: Список объектов LineString.
+    """
+    # plt.show()
+
+    # Проходим по каждому LineString в массиве paths
+
+    x, y = path.xy  # Извлекаем координаты x и y
+    ax.plot(x, y,'r', linewidth=0.5)  # Рисуем линии на графике
+    plt.pause(1)
+
+def get_midpoint(point1, point2):
+    """Найти среднюю точку отрезка, заданного двумя точками."""
+    mid_x = (point1[0] + point2[0]) / 2
+    mid_y = (point1[1] + point2[1]) / 2
+    return (mid_x, mid_y)
 
 def link_tacks_sequentially(TackList):
     """Связать галсы для формирования последовательного пути."""
@@ -166,6 +186,7 @@ def coverage_path_planning_algorithm(zona_research, distance):
     ax.add_patch(polygon)
 
     optimal_tack_set = []
+    TackList = []
     zona_research_polygon = ShapelyPolygon(zona_research)
 
     while zona_research_polygon.area > 0:
@@ -178,8 +199,15 @@ def coverage_path_planning_algorithm(zona_research, distance):
                 continue  # Пропускаем короткие edge
 
             angle = get_angle(edge) - np.pi / 2
-            point = np.array(edge[0]) + get_shift(angle, distance / 2)
+            midpoint = get_midpoint(edge[0], edge[1])
+
+            point = np.array(midpoint) + get_shift(angle, distance / 2)
+            # Проверьте, находится ли точка внутри многоугольника            
+            if not zona_research_polygon.contains(Point(point)):
+                # Точка находится снаружи многоугольника
+                point = np.array(midpoint) - get_shift(angle, distance / 2)
             line = get_straight_line(point, angle - np.pi / 2)
+            # plot_path(LineString(line), plt, ax)
             cross_point_set = []
 
             for otherEdge in zip(coords, coords[1:]):
@@ -202,7 +230,7 @@ def coverage_path_planning_algorithm(zona_research, distance):
 
         if vector_criterion:
             optimal_tack = find_maximum(vector_criterion)
-            x, y = optimal_tack.xy
+            # x, y = optimal_tack.xy
             # ax.plot(x, y, 'k')
             # plt.show()
 
@@ -217,8 +245,10 @@ def coverage_path_planning_algorithm(zona_research, distance):
             zona_research_polygon = ShapelyPolygon()
     
     path, points = link_tacks_sequentially(TackList)
-    plot_paths(path,plt,ax)
-    return path, points, plt
+    plot_paths(path,ax)
+    # plt.show()
+    return points, ax
+    # return points
 
 
 # vertices1 = [(5, 10), (10, 15), (20,  20), (15, 5), (1, 1)]
@@ -227,6 +257,9 @@ def coverage_path_planning_algorithm(zona_research, distance):
 # vertices4 = [(3, 12), (7, 18), (14, 19), (18, 11), (12, 6)]
 # vertices5 = [(2, 8), (8, 18), (12, 20), (16, 12), (6, 5)]
 # vertices6 = [(3, 15), (7, 18), (8, 12), (14, 13), (16, 14), (19, 12), (10, 4), (4,2)]
+
+# vertices1 = [(4, 11), (11, 7), (16, 12), (13, 16), (8, 17)]
+
 
 gs = 1
 

@@ -1,0 +1,29 @@
+
+import matplotlib.pyplot as plt
+from coveragePathPlanningAlgorithm import coverage_path_planning_algorithm
+from yawControl import YawControl
+
+
+tf_model = YawControl()
+
+
+# auv = GoToPoint([0, 0], 0.1, 0.5, tf_model, plt)
+# auv.start_mission([-10, 10])
+
+
+
+
+vertices1 = [(5, 10), (10, 15), (20,  20), (15, 5), (1, 1)]
+vertices2 = [(2, 18), (8, 19), (14, 15), (17, 8), (5, 3)]
+vertices3 = [(1, 6), (4, 18), (10, 20), (16, 15), (18, 7)]
+vertices4 = [(3, 12), (7, 18), (14, 19), (18, 11), (12, 6)]
+vertices5 = [(2, 8), (8, 18), (12, 20), (16, 12), (6, 5)]
+vertices6 = [(3, 15), (7, 18), (8, 12), (14, 13), (16, 14), (19, 12), (10, 4), (4,2)]
+# vertices6 = [(15, 75), (35, 90), (40, 60), (70, 65), (80, 70), (95, 60), (50, 20), (20, 10)]
+
+gs = 1
+path, points, plt = coverage_path_planning_algorithm(vertices2, gs)
+auv = GoToPoint([1, 19], 0.02, 0.5, tf_model, plt)
+
+for waypoint in points:
+    auv.start_mission([waypoint[0],waypoint[1]])
